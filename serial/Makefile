@@ -1,4 +1,6 @@
 SHELL=/bin/sh
+CCOMPILER=gcc
+CFLAGS = -Wall -O3 -mcmodel=large -lm
 
 # WORKLOAD
 WORKLOAD=A
@@ -17,7 +19,7 @@ ifeq ($(TIMER),ON)
 	TIMER_FLAG=TIMER
 endif
 
-include ../config/make.def
+# include ../config/make.def
 
 all: data_generator k_means
 
