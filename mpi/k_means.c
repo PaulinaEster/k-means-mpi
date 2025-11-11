@@ -82,9 +82,9 @@ void k_means(){
 
 void find_clusters(int my_rank, int nprocs){
     for(int i = my_rank; i < N_POINTS; i+=nprocs){
-        double min_dist = (points[i].x - x[my_rank]) * (points[i].x - x[my_rank])
-                        + (points[i].y - y[my_rank]) * (points[i].y - y[my_rank]);
-        int cluster_id = my_rank;
+        double min_dist = (points[i].x - x[0]) * (points[i].x - x[0])
+                        + (points[i].y - y[0]) * (points[i].y - y[0]);
+        int cluster_id = 0;
 
         for(int j = 1; j < N_MEANS; j++){
             double cur_dist = (points[i].x - x[j]) * (points[i].x - x[j])
@@ -124,6 +124,7 @@ void calculate_means(int my_rank, int nprocs, double* x_, double* y_, int* count
         if(count[i] > 0){
             x[i] /= count[i];
             y[i] /= count[i];
+	        printf("[%d] x %f y %f count %d \n", my_rank, x[i], y[i], count[i]);
         }
     }
 }

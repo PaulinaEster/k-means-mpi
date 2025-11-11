@@ -61,6 +61,7 @@ void k_means(){
         calculate_means();
 
         iteration_control++;
+	    printf(" iteration_control modified %d\n", modified);
     }
 }
 
