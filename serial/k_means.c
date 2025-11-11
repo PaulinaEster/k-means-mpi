@@ -1,5 +1,5 @@
 
-#include "../include/k-means/k_means.h"
+#include "include/k-means/k_means.h"
 
 int main(int argc, char* argv[]){
 	points = (point*) malloc(N_POINTS * sizeof(point));

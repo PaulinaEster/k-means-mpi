@@ -1,9 +1,20 @@
 
 #include "../include/k-means/k_means.h"
+#include<mpi.h>
+
+
 
 int main(int argc, char* argv[]){
+    MPI_Init(&argc, &argv);
+
+
 	points = (point*) malloc(N_POINTS * sizeof(point));
-    means = (mean*) malloc(N_MEANS * sizeof(mean));
+    // means = (mean*) malloc(N_MEANS * sizeof(mean));
+    
+    count = (int*) malloc(N_MEANS * sizeof(int));
+    x = (double*) malloc(N_MEANS * sizeof(double));
+    y = (double*) malloc(N_MEANS * sizeof(double));
+
     points_cluster_verification = (int*) malloc(N_POINTS * sizeof(int));
     means_verification = (mean*) malloc(N_MEANS * sizeof(mean));
 
@@ -12,26 +23,10 @@ int main(int argc, char* argv[]){
 
 	timer_start(TIMER_TOTAL);
 
-	// linearization of the data, if applicable
-	if(timer_flag){timer_start(TIMER_LINEARIZATION);}
-	if(timer_flag){timer_stop(TIMER_LINEARIZATION);}
-
-	// memory transfers, if applicable
-	if(timer_flag){timer_start(TIMER_MEMORY_TRANSFERS);}
-	if(timer_flag){timer_stop(TIMER_MEMORY_TRANSFERS);}	
-
 	// k-means
 	if(timer_flag){timer_start(TIMER_COMPUTATION);}
 	k_means();
 	if(timer_flag){timer_stop(TIMER_COMPUTATION);}
-
-    // memory transfers, if applicable
-	if(timer_flag){timer_start(TIMER_MEMORY_TRANSFERS);}
-	if(timer_flag){timer_stop(TIMER_MEMORY_TRANSFERS);}	
-
-	// linearization of the data, if applicable
-	if(timer_flag){timer_start(TIMER_LINEARIZATION);}
-	if(timer_flag){timer_stop(TIMER_LINEARIZATION);}	
 
 	timer_stop(TIMER_TOTAL);
 
@@ -53,57 +48,73 @@ void k_means(){
 	modified = 1;
     iteration_control = 0;
 
+    int *count_g = NULL;
+    double *x_g = NULL;
+    double *y_g = NULL;
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    int nprocs;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+    count_g = (int*) malloc(N_MEANS * sizeof(int));
+    x_g = (double*) malloc(N_MEANS * sizeof(double));
+    y_g = (double*) malloc(N_MEANS * sizeof(double));
     while(modified){
         modified = 0;
 
-        find_clusters();
+        find_clusters(rank, nprocs);
 
-        calculate_means();
+        calculate_means(rank, nprocs, x_g, y_g, count_g);
 
         iteration_control++;
     }
 }
 
-void find_clusters(){
-    for(int i = 0; i < N_POINTS; i++){
-        double min_dist = (points[i].x - means[0].x) * (points[i].x - means[0].x)
-                        + (points[i].y - means[0].y) * (points[i].y - means[0].y);
-        int min_idx = 0;
+void find_clusters(int my_rank, int nprocs){
+    for(int i = my_rank; i < N_POINTS; i+=nprocs){
+        double min_dist = (points[i].x - x[my_rank]) * (points[i].x - x[my_rank])
+                        + (points[i].y - y[my_rank]) * (points[i].y - y[my_rank]);
+        int cluster_id = my_rank;
 
         for(int j = 1; j < N_MEANS; j++){
-            double cur_dist = (points[i].x - means[j].x) * (points[i].x - means[j].x)
-                            + (points[i].y - means[j].y) * (points[i].y - means[j].y);
+            double cur_dist = (points[i].x - x[j]) * (points[i].x - x[j])
+                            + (points[i].y - y[j]) * (points[i].y - y[j]);
             if(cur_dist < min_dist){
                 min_dist = cur_dist;
-                min_idx = j;
+                cluster_id = j;
             }
         }
 
-        if(points[i].cluster != min_idx){
-            points[i].cluster = min_idx;
+        if(points[i].cluster != cluster_id){
+            points[i].cluster = cluster_id;
             modified = 1;
         }
     }
 }
 
-void calculate_means(){
+void calculate_means(int my_rank, int nprocs, double* x_, double* y_, int* count_){
     for(int i = 0; i < N_MEANS; i++){
-        means[i].count = 0;
-        means[i].x = 0.0;
-        means[i].y = 0.0;
+        count_[i] = 0;
+        y_[i] = 0.0;
+        x_[i] = 0.0;
     }
 
-    for(int i = 0; i < N_POINTS; i++){
+    for(int i = my_rank; i < N_POINTS; i+=nprocs){
         int cluster = points[i].cluster;
-        means[cluster].count++;
-        means[cluster].x += points[i].x;
-        means[cluster].y += points[i].y;
+        count_[cluster]++;
+        x_[cluster] += points[i].x;
+        y_[cluster] += points[i].y;
     }
 
+    MPI_Allreduce(x_, x, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(y_, y, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(count_, count, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
     for(int i = 0; i < N_MEANS; i++){
-        if(means[i].count > 0){
-            means[i].x /= means[i].count;
-            means[i].y /= means[i].count;
+        if(count[i] > 0){
+            x[i] /= count[i];
+            y[i] /= count[i];
         }
     }
 }
