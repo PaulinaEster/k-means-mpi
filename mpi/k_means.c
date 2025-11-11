@@ -1,5 +1,5 @@
 
-#include "../include/k-means/k_means.h"
+#include "include/k-means/k_means.h"
 #include<mpi.h>
 
 #define ROOT 0
@@ -10,41 +10,40 @@ int main(int argc, char* argv[]){
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-	points = (point*) malloc(N_POINTS * sizeof(point));
+	// points = (point*) malloc(N_POINTS * sizeof(point));
     // means = (mean*) malloc(N_MEANS * sizeof(mean));
-
-    count = (int*) malloc(N_MEANS * sizeof(int));
-    x = (double*) malloc(N_MEANS * sizeof(double));
-    y = (double*) malloc(N_MEANS * sizeof(double));
+    points = (Points*) malloc(sizeof(Points));
+    points->cluster = (int*) malloc(N_MEANS * sizeof(int));
+    points->x = (double*) malloc(N_MEANS * sizeof(double));
+    points->y = (double*) malloc(N_MEANS * sizeof(double));
+    means = (Means*) malloc(sizeof(Means));
+    means->count = (int*) malloc(N_MEANS * sizeof(int));
+    means->x = (double*) malloc(N_MEANS * sizeof(double));
+    means->y = (double*) malloc(N_MEANS * sizeof(double));
 
     points_cluster_verification = (int*) malloc(N_POINTS * sizeof(int));
     means_verification = (mean*) malloc(N_MEANS * sizeof(mean));
 
 	// initial values
 	initialization();
-    // if(rank == ROOT){
-    //     timer_start(TIMER_TOTAL); 
-    // }
+    if(rank == ROOT){
+        timer_start(TIMER_TOTAL); 
+    }
 	k_means(); 
 
     if(rank == ROOT){ 
         timer_stop(TIMER_TOTAL);
 
         // checksum routine
-        verification();
-	    printf("[%d] verification\n", rank);
-
+        verification(); 
         // print results
-        debug_results();	
-	    printf("[%d] debug_results\n", rank);
+        debug_results();	 
 
         // freeing memory and stuff
-        release_resources();
-	    printf("[%d] release_resources\n", rank);
+        release_resources(); 
 
         execution_report((char*)"K-Means", (char*)WORKLOAD, timer_read(TIMER_TOTAL), passed_verification);
-    }
-	printf("[%d] Finalize\n", rank);
+    } 
     MPI_Finalize();
 	return 0;
 }
@@ -82,21 +81,21 @@ void k_means(){
 
 void find_clusters(int my_rank, int nprocs){
     for(int i = my_rank; i < N_POINTS; i+=nprocs){
-        double min_dist = (points[i].x - x[0]) * (points[i].x - x[0])
-                        + (points[i].y - y[0]) * (points[i].y - y[0]);
+        double min_dist = (points->x[i] - means->x[0]) * (points->x[i] - means->x[0])
+                        + (points->y[i] - means->y[0]) * (points->y[i] - means->y[0]);
         int cluster_id = 0;
 
         for(int j = 1; j < N_MEANS; j++){
-            double cur_dist = (points[i].x - x[j]) * (points[i].x - x[j])
-                            + (points[i].y - y[j]) * (points[i].y - y[j]);
+            double cur_dist = (points->x[i] - means->x[j]) * (points->x[i] - means->x[j])
+                            + (points->y[i] - means->y[j]) * (points->y[i] - means->y[j]);
             if(cur_dist < min_dist){
                 min_dist = cur_dist;
                 cluster_id = j;
             }
         }
 
-        if(points[i].cluster != cluster_id){
-            points[i].cluster = cluster_id;
+        if(points->cluster[i] != cluster_id){
+            points->cluster[i] = cluster_id;
             modified = 1;
         }
     }
@@ -110,21 +109,21 @@ void calculate_means(int my_rank, int nprocs, double* x_, double* y_, int* count
     }
 
     for(int i = my_rank; i < N_POINTS; i+=nprocs){
-        int cluster = points[i].cluster;
+        int cluster = points->cluster[i];
         count_[cluster]++;
-        x_[cluster] += points[i].x;
-        y_[cluster] += points[i].y;
+        x_[cluster] += points->x[i];
+        y_[cluster] += points->y[i];
     }
 
-    MPI_Allreduce(x_, x, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(y_, y, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(count_, count, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(x_, means->x, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(y_, means->y, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(count_, means->count, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
     for(int i = 0; i < N_MEANS; i++){
-        if(count[i] > 0){
-            x[i] /= count[i];
-            y[i] /= count[i];
-	        printf("[%d] x %f y %f count %d \n", my_rank, x[i], y[i], count[i]);
+        if(means->count[i] > 0){
+            means->x[i] /= means->count[i];
+            means->y[i] /= means->count[i];
+	        printf("[%d] x %f y %f count %d \n", my_rank, means->x[i], means->y[i],  means->count[i]);
         }
     }
 }

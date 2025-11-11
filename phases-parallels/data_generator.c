@@ -1,5 +1,5 @@
 
-#include "../include/k-means/k_means.h"
+#include "include/k-means/k_means.h"
 
 void data_generator_find_clusters(){
     for(int i = 0; i < N_POINTS; i++){

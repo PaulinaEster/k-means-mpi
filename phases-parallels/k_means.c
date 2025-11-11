@@ -1,5 +1,5 @@
 
-#include "../include/k-means/k_means.h"
+#include "include/k-means/k_means.h"
 #include<mpi.h>
 
 #define ROOT 0

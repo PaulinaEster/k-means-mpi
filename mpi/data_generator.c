@@ -1,23 +1,23 @@
 
-#include "../include/k-means/k_means.h"
+#include "include/k-means/k_means.h"
 
 void data_generator_find_clusters(){
     for(int i = 0; i < N_POINTS; i++){
-        double min_dist = (points[i].x - means[0].x) * (points[i].x - means[0].x)
-                        + (points[i].y - means[0].y) * (points[i].y - means[0].y);
+        double min_dist = (points->x[i] - means->x[0]) * (points->x[i] - means->x[0])
+                        + (points->y[i] - means->y[0]) * (points->y[i] - means->y[0]);
         int min_idx = 0;
 
         for(int j = 1; j < N_MEANS; j++){
-            double cur_dist = (points[i].x - means[j].x) * (points[i].x - means[j].x)
-                            + (points[i].y - means[j].y) * (points[i].y - means[j].y);
+            double cur_dist = (points->x[i] - means->x[j]) * (points->x[i] - means->x[j])
+                            + (points->y[i] - means->y[j]) * (points->y[i] - means->y[j]);
             if(cur_dist < min_dist){
                 min_dist = cur_dist;
                 min_idx = j;
             }
         }
 
-        if(points[i].cluster != min_idx){
-            points[i].cluster = min_idx;
+        if(points->cluster[i] != min_idx){
+            points->cluster[i] = min_idx;
             modified = 1;
         }
     }
@@ -25,43 +25,49 @@ void data_generator_find_clusters(){
 
 void data_generator_calculate_means(){
     for(int i = 0; i < N_MEANS; i++){
-        means[i].count = 0;
-        means[i].x = 0.0;
-        means[i].y = 0.0;
+        means->count[i] = 0;
+        means->x[i] = 0.0;
+        means->y[i] = 0.0;
     }
 
     for(int i = 0; i < N_POINTS; i++){
-        int cluster = points[i].cluster;
-        means[cluster].count++;
-        means[cluster].x += points[i].x;
-        means[cluster].y += points[i].y;
+        int cluster = points->cluster[i];
+        means->count[cluster]++;
+        means->x[cluster] += points->x[i];
+        means->y[cluster] += points->y[i];
     }
 
     for(int i = 0; i < N_MEANS; i++){
-        if(means[i].count > 0){
-            means[i].x /= means[i].count;
-            means[i].y /= means[i].count;
+        if(means->count[i] > 0){
+            means->x[i] /= means->count[i];
+            means->y[i] /= means->count[i];
         }
     }
 }
 
 int main(){
     //////////////////////////////////////////////////
-    // allocate points, means, and verification values
-    points = (point*) malloc(N_POINTS * sizeof(point));
-    means = (mean*) malloc(N_MEANS * sizeof(mean));
+    // allocate points, means, and verification valuespoints->cluster = (int*) malloc(N_MEANS * sizeof(int));
+    points = (Points*) malloc(sizeof(Points));
+    points->cluster = (int*) malloc(N_MEANS * sizeof(int));
+    points->x = (double*) malloc(N_MEANS * sizeof(double));
+    points->y = (double*) malloc(N_MEANS * sizeof(double));
+    means = (Means*) malloc(sizeof(Means));
+    means->count = (int*) malloc(N_MEANS * sizeof(int));
+    means->x = (double*) malloc(N_MEANS * sizeof(double));
+    means->y = (double*) malloc(N_MEANS * sizeof(double));
 
     //////////////////////////////
     // initialize points and means
     for (int i = 0; i < N_POINTS; i++) {
-        points[i].x = rand() % INTERVAL;
-        points[i].y = rand() % INTERVAL;
-        points[i].cluster = 0;
+        points->x[i] = rand() % INTERVAL;
+        points->y[i] = rand() % INTERVAL;
+        points->cluster[i] = 0;
     }
     for (int i = 0; i < N_MEANS; i++) {
-        means[i].x = rand() % INTERVAL;
-        means[i].y = rand() % INTERVAL;
-        means[i].count = 0;
+        means->x[i] = rand() % INTERVAL;
+        means->y[i] = rand() % INTERVAL;
+        means->count[i] = 0;
     }
 
     ///////////////////////////
@@ -81,7 +87,7 @@ int main(){
         fprintf(file, "\n");	
         // write points
         for(int i = 0; i < N_POINTS; i++){
-		    fprintf(file, "%la %la %d\n", points[i].x, points[i].y, points[i].cluster);
+		    fprintf(file, "%la %la %d\n", points->x[i], points->y[i], points->cluster[i]);
 	    }
         // blank lines
         fprintf(file, "\n\n\n\n\n");
@@ -91,7 +97,7 @@ int main(){
         fprintf(file, "\n");
         // write means
         for(int i = 0; i < N_MEANS; i++){
-		    fprintf(file, "%la %la %d\n", means[i].x, means[i].y, means[i].count);
+		    fprintf(file, "%la %la %d\n", means->x[i], means->y[i], means->count[i]);
 	    }
         // blank lines
         fprintf(file, "\n\n\n\n\n");
@@ -123,7 +129,7 @@ int main(){
         fprintf(file, "\n");	
         // write points
         for(int i = 0; i < N_POINTS; i++){
-		    fprintf(file, "%d\n", points[i].cluster);
+		    fprintf(file, "%d\n", points->cluster[i]);
 	    }
         // blank lines
         fprintf(file, "\n\n\n\n\n");
@@ -133,7 +139,7 @@ int main(){
         fprintf(file, "\n");
         // write means' results
         for(int i = 0; i < N_MEANS; i++){
-		    fprintf(file, "%la %la %d\n", means[i].x, means[i].y, means[i].count);
+		    fprintf(file, "%la %la %d\n", means->x[i], means->y[i], means->count[i]);
 	    }
         // blank lines
         fprintf(file, "\n\n\n\n\n");
