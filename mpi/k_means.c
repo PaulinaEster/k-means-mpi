@@ -2,15 +2,17 @@
 #include "../include/k-means/k_means.h"
 #include<mpi.h>
 
-
+#define ROOT 0
 
 int main(int argc, char* argv[]){
     MPI_Init(&argc, &argv);
 
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	points = (point*) malloc(N_POINTS * sizeof(point));
     // means = (mean*) malloc(N_MEANS * sizeof(mean));
-    
+
     count = (int*) malloc(N_MEANS * sizeof(int));
     x = (double*) malloc(N_MEANS * sizeof(double));
     y = (double*) malloc(N_MEANS * sizeof(double));
@@ -20,27 +22,30 @@ int main(int argc, char* argv[]){
 
 	// initial values
 	initialization();
+    // if(rank == ROOT){
+    //     timer_start(TIMER_TOTAL); 
+    // }
+	k_means(); 
 
-	timer_start(TIMER_TOTAL);
+    if(rank == ROOT){ 
+        timer_stop(TIMER_TOTAL);
 
-	// k-means
-	if(timer_flag){timer_start(TIMER_COMPUTATION);}
-	k_means();
-	if(timer_flag){timer_stop(TIMER_COMPUTATION);}
+        // checksum routine
+        verification();
+	    printf("[%d] verification\n", rank);
 
-	timer_stop(TIMER_TOTAL);
+        // print results
+        debug_results();	
+	    printf("[%d] debug_results\n", rank);
 
-	// checksum routine
-	verification();
+        // freeing memory and stuff
+        release_resources();
+	    printf("[%d] release_resources\n", rank);
 
-	// print results
-	debug_results();	
-
-	// freeing memory and stuff
-	release_resources();
-
-	execution_report((char*)"K-Means", (char*)WORKLOAD, timer_read(TIMER_TOTAL), passed_verification);
-
+        execution_report((char*)"K-Means", (char*)WORKLOAD, timer_read(TIMER_TOTAL), passed_verification);
+    }
+	printf("[%d] Finalize\n", rank);
+    MPI_Finalize();
 	return 0;
 }
 
@@ -60,7 +65,8 @@ void k_means(){
     count_g = (int*) malloc(N_MEANS * sizeof(int));
     x_g = (double*) malloc(N_MEANS * sizeof(double));
     y_g = (double*) malloc(N_MEANS * sizeof(double));
-    while(modified){
+    int mod_aux = 1;
+    while(mod_aux){
         modified = 0;
 
         find_clusters(rank, nprocs);
@@ -68,7 +74,10 @@ void k_means(){
         calculate_means(rank, nprocs, x_g, y_g, count_g);
 
         iteration_control++;
+	    printf("[%d] iteration_control modified %d\n", rank, modified);
+        MPI_Allreduce(&modified, &mod_aux, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
     }
+	printf("[%d] SAINDO\n", rank);
 }
 
 void find_clusters(int my_rank, int nprocs){
