@@ -102,8 +102,8 @@ int passed_verification;
 
 // k-means
 void k_means();
-void find_clusters(int my_rank, int nprocs);
-void calculate_means(int my_rank, int nprocs, double* x_, double* y_, int* count_);
+void find_clusters(int my_rank, int nprocs, double* x_p, double* y_p, int* cluster_p);
+void calculate_means(int my_rank, int nprocs, double* x_, double* y_, int* count_, double* x_p, double* y_p, int* cluster_p);
 
 // other function prototypes
 void initialization();
