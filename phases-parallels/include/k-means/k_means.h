@@ -79,10 +79,6 @@ typedef struct{
 	double y;
 } mean;
 
-int *count = NULL;
-double *x = NULL;
-double *y = NULL;
-
 // global variables
 int iteration_control;
 int modified;
@@ -94,8 +90,8 @@ int passed_verification;
 
 // k-means
 void k_means();
-void find_clusters(int my_rank, int nprocs);
-void calculate_means(int my_rank, int nprocs, double* x_, double* y_, int* count_);
+void find_clusters();
+void calculate_means();
 
 // other function prototypes
 void initialization();
@@ -134,9 +130,9 @@ void initialization(){
 	    if(!fscanf(file, "%d", &temp_n_means)){exit(-1);}
         // read points
         for(int i = 0; i < N_MEANS; i++){
-		    if(!fscanf(file, "%la", &x[i])){exit(-1);}
-            if(!fscanf(file, "%la", &y[i])){exit(-1);}
-			if(!fscanf(file, "%d", &count[i])){exit(-1);}
+		    if(!fscanf(file, "%la", &means[i].x)){exit(-1);}
+            if(!fscanf(file, "%la", &means[i].y)){exit(-1);}
+			if(!fscanf(file, "%d", &means[i].count)){exit(-1);}
 	    }
 
 		// read N_POINTS (verification values)
@@ -200,11 +196,11 @@ void verification(){
 	for(int i = 0; i < N_MEANS; i++){
 		int is_mean_correct = 0;
 
-		if(count[i] == means_verification[i].count){
+		if(means[i].count == means_verification[i].count){
 			is_mean_correct += 1;
 		}		
-		is_mean_correct += passed_auxiliary_verification(x[i], means_verification[i].x);
-		is_mean_correct += passed_auxiliary_verification(y[i], means_verification[i].y);
+		is_mean_correct += passed_auxiliary_verification(means[i].x, means_verification[i].x);
+		is_mean_correct += passed_auxiliary_verification(means[i].y, means_verification[i].y);
 				
 		if(is_mean_correct == 3){
 			correct_means++;
@@ -268,7 +264,7 @@ void debug_results(){
         for(int i = 0; i < N_MEANS; i++){
             fprintf(file, "%5d    %10.6f %10.6f %5d    %10.6f %10.6f %5d\n", 
                     i, 
-                    x[i], y[i], count[i], 
+                    means[i].x, means[i].y, means[i].count, 
                     means_verification[i].x, means_verification[i].y, means_verification[i].count);
         }
         fprintf(file, "\n");
@@ -286,11 +282,11 @@ void debug_results(){
         for(int i = 0; i < N_MEANS; i++){
             int is_mean_correct = 0;
 
-			if(count[i] == means_verification[i].count){
+			if(means[i].count == means_verification[i].count){
                 is_mean_correct += 1;
             }
-            is_mean_correct += passed_auxiliary_verification(x[i], means_verification[i].x);
-            is_mean_correct += passed_auxiliary_verification(y[i], means_verification[i].y);
+            is_mean_correct += passed_auxiliary_verification(means[i].x, means_verification[i].x);
+            is_mean_correct += passed_auxiliary_verification(means[i].y, means_verification[i].y);
             
             if(is_mean_correct == 3){
                 correct_means++;
