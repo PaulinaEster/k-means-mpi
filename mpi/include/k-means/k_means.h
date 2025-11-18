@@ -314,8 +314,8 @@ void debug_results(){
 }
 
 void release_resources(){
-    free(points);
-	free(means);
 	free(points_cluster_verification);
 	free(means_verification);
+	free(means);
+    free(points);
 }

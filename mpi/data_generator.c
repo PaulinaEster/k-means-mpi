@@ -49,9 +49,9 @@ int main(){
     //////////////////////////////////////////////////
     // allocate points, means, and verification valuespoints->cluster = (int*) malloc(N_MEANS * sizeof(int));
     points = (Points*) malloc(sizeof(Points));
-    points->cluster = (int*) malloc(N_MEANS * sizeof(int));
-    points->x = (double*) malloc(N_MEANS * sizeof(double));
-    points->y = (double*) malloc(N_MEANS * sizeof(double));
+    points->cluster = (int*) malloc(N_POINTS * sizeof(int));
+    points->x = (double*) malloc(N_POINTS * sizeof(double));
+    points->y = (double*) malloc(N_POINTS * sizeof(double));
     means = (Means*) malloc(sizeof(Means));
     means->count = (int*) malloc(N_MEANS * sizeof(int));
     means->x = (double*) malloc(N_MEANS * sizeof(double));
@@ -148,7 +148,11 @@ int main(){
     }
     fclose(file);
 
-    free(points);
-    free(means);
+    free(points->cluster);
+    free(points->x);
+    free(points->y);
+	free(means->count);
+	free(means->x);
+	free(means->y);
     return 0;
 }

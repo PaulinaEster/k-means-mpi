@@ -14,6 +14,7 @@ int main(int argc, char* argv[]){
     points->cluster = (int*) malloc(N_POINTS * sizeof(int));
     points->x = (double*) malloc(N_POINTS * sizeof(double));
     points->y = (double*) malloc(N_POINTS * sizeof(double));
+    
     means = (Means*) malloc(sizeof(Means));
     means->count = (int*) malloc(N_MEANS * sizeof(int));
     means->x = (double*) malloc(N_MEANS * sizeof(double));
@@ -26,7 +27,7 @@ int main(int argc, char* argv[]){
 	initialization();
     if(rank == ROOT){
         timer_start(TIMER_TOTAL); 
-    }
+    } 
 	k_means(); 
 
     if(rank == ROOT){ 
@@ -37,11 +38,10 @@ int main(int argc, char* argv[]){
         // print results
         debug_results();	 
 
-        // freeing memory and stuff
-        release_resources(); 
-
         execution_report((char*)"K-Means", (char*)WORKLOAD, timer_read(TIMER_TOTAL), passed_verification);
-    } 
+    }
+    // freeing memory and stuff
+    release_resources(); 
     MPI_Finalize();
 	return 0;
 }
@@ -62,9 +62,9 @@ void k_means(){
     int nprocs;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-    count_g = (int*) malloc(N_MEANS * sizeof(int));
-    x_g = (double*) malloc(N_MEANS * sizeof(double));
-    y_g = (double*) malloc(N_MEANS * sizeof(double));
+    count_g = (int*) calloc(N_MEANS, sizeof(int));
+    x_g = (double*) calloc(N_MEANS, sizeof(double));
+    y_g = (double*) calloc(N_MEANS, sizeof(double));
 
     cluster_p = (int*) malloc(N_POINTS * sizeof(int));
     x_p = (double*) malloc(N_POINTS * sizeof(double));
@@ -86,6 +86,13 @@ void k_means(){
         MPI_Allreduce(&modified, &mod_aux, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
     }
     MPI_Reduce(cluster_p, points->cluster, N_POINTS, MPI_INT, MPI_MAX, ROOT, MPI_COMM_WORLD);
+
+    free(count_g);
+    free(x_g);
+    free(y_g);
+    free(y_p);
+    free(x_p);
+    free(cluster_p);
 }
 
 void find_clusters(int my_rank, int nprocs, double* x_p, double* y_p, int* cluster_p){
