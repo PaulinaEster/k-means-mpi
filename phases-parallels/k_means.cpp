@@ -161,6 +161,7 @@ void initialize_centroids(std::vector<double>& centroids, const std::vector<doub
     // Each process chooses a random local point and sends to rank 0
     int local_idx = std::uniform_int_distribution<int>(0, points_per_proc - 1)(rng);
     
+    // Set candidates (x, y coordinates) of each process
     double candidate[2] = {
         local_points[local_idx * 2 + 0],
         local_points[local_idx * 2 + 1]
@@ -174,17 +175,17 @@ void initialize_centroids(std::vector<double>& centroids, const std::vector<doub
                (world_rank == 0 ? recvbuf.data() : nullptr), DIM, MPI_DOUBLE,
                0, MPI_COMM_WORLD);
     
-    // Rank 0 initializes centroids from gathered candidates
+    // Rank 0 initializes centroids randomly from gathered candidates
     if (world_rank == 0) {
-        std::mt19937 rng0(12345);
-        std::vector<int> idx(world_size);
+        std::mt19937 rng0(12345); // seed
+        std::vector<int> idx(world_size); // array containing the num of processes
         for (int i = 0; i < world_size; ++i) idx[i] = i;
-        std::shuffle(idx.begin(), idx.end(), rng0);
+        std::shuffle(idx.begin(), idx.end(), rng0); // shuffle array
         
         for (int c = 0; c < k; ++c) {
-            int src = idx[c % world_size];
-            centroids[c*2 + 0] = recvbuf[src*2 + 0];
-            centroids[c*2 + 1] = recvbuf[src*2 + 1];
+            int src = idx[c % world_size];           // pick process from the shuffled array
+            centroids[c*2 + 0] = recvbuf[src*2 + 0]; // Copy x-coordinate
+            centroids[c*2 + 1] = recvbuf[src*2 + 1]; // Copy y-coordinate
         }
     }
     
@@ -286,8 +287,8 @@ int main(int argc, char** argv) {
 
     // Local variables for each process
     std::vector<int> local_assign(points_per_proc, -1);
-    std::vector<double> local_sum(k * DIM, 0.0);
-    std::vector<int> local_count(k, 0);
+    std::vector<double> local_sum(k * DIM, 0.0); // Sum of coordinates for each cluster
+    std::vector<int> local_count(k, 0); // Count how many points each process has assigned to each cluster locally
 
     // Global (for rank 0)
     std::vector<double> global_sum(k * DIM, 0.0);
@@ -331,60 +332,54 @@ int main(int argc, char** argv) {
         }
 
         // ------------------------
-        // Synchronize Phase
+        // Synchronize Phase (All-to-All Broadcast)
         // ------------------------
 
-        // Each process sends its local sums and counts to the root process (rank 0)
-        MPI_Reduce(local_sum.data(), global_sum.data(), k*DIM, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-        MPI_Reduce(local_count.data(), global_count.data(), k, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-        MPI_Barrier(MPI_COMM_WORLD);
+        // All processes exchange their local sums and counts with each other using Allreduce
+        MPI_Allreduce(local_sum.data(), global_sum.data(), k*DIM, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(local_count.data(), global_count.data(), k, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
         // ------------------------
-        // Update Centroids Phase
+        // Update Centroids Phase (All Processes)
         // ------------------------
 
-        if (world_rank == 0) {
-            // Store previous centroids for convergence check
-            prev_centroids = centroids;
-            
-            for (int j = 0; j < k; ++j) {
-                if (global_count[j] > 0) {
-                    centroids[j * DIM + 0] = global_sum[j * DIM + 0] / global_count[j];
-                    centroids[j * DIM + 1] = global_sum[j * DIM + 1] / global_count[j];
-                }
+        // Perform centroid update and convergence check
+        // Store previous centroids for convergence check
+        prev_centroids = centroids;
+        
+        for (int j = 0; j < k; ++j) {
+            if (global_count[j] > 0) {
+                centroids[j * DIM + 0] = global_sum[j * DIM + 0] / global_count[j];
+                centroids[j * DIM + 1] = global_sum[j * DIM + 1] / global_count[j];
             }
-            
-            // Check for convergence
-            double max_change = 0.0;
-            for (int j = 0; j < k * DIM; ++j) {
-                double change = std::abs(centroids[j] - prev_centroids[j]);
-                max_change = std::max(max_change, change);
-            }
-            
-            if (max_change < convergence_threshold) {
-                converged = true;
+        }
+        
+        // All processes check for convergence
+        double max_change = 0.0;
+        for (int j = 0; j < k * DIM; ++j) {
+            double change = std::abs(centroids[j] - prev_centroids[j]);
+            max_change = std::max(max_change, change);
+        }
+        
+        if (max_change < convergence_threshold) {
+            converged = true;
+            if (world_rank == 0) {
                 std::cout << "\nConverged after " << (iter + 1) << " iterations (max change: " 
                           << std::scientific << std::setprecision(2) << max_change << ")" << std::endl;
             }
-            
-            // Print intermediate results for first iteration and halfway point
-            if (iter == 0 || iter == max_iter / 2) {
-                std::cout << "\n-------- Iteration " << (iter + 1) << " Results --------" << std::endl;
-                for (int j = 0; j < k; ++j) {
-                    std::cout << "Centroid " << j << ": ("
-                              << std::fixed << std::setprecision(2)
-                              << centroids[j * DIM + 0] << ", "
-                              << centroids[j * DIM + 1] << ")" << std::endl;
-                }
-                std::cout << std::endl;
-            }
         }
-
-        // Broadcast updated centroids to all processes
-        MPI_Bcast(centroids.data(), k*DIM, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         
-        // Broadcast convergence status to all processes
-        MPI_Bcast(&converged, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+        // Only rank 0 prints intermediate results for first iteration and halfway point
+        if (world_rank == 0 && (iter == 0 || iter == max_iter / 2)) {
+            std::cout << "\n-------- Iteration " << (iter + 1) << " Results --------" << std::endl;
+            for (int j = 0; j < k; ++j) {
+                std::cout << "Centroid " << j << ": ("
+                          << std::fixed << std::setprecision(2)
+                          << centroids[j * DIM + 0] << ", "
+                          << centroids[j * DIM + 1] << ")" << std::endl;
+            }
+            std::cout << std::endl;
+        }
     }
 
     
