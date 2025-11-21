@@ -1,6 +1,10 @@
 // kmeans_mpi.cpp
 // Parallel K-means (MPI) — Bulk Synchronous Parallel (BSP) model
-// Example execution: mpiexec -np 4 phases-parallels/k_means.exe 4 1000 50
+// File mode: mpiexec -np 4 k_means.exe file <max_iter>
+// Generate mode: mpiexec -np 4 k_means.exe generate <k> <points_per_proc> <max_iter>
+//
+// Example execution: mpiexec -np 4 phases-parallels/k_means.exe generate 4 1000 50
+// Example execution: mpiexec -np 4 phases-parallels/k_means.exe file 50
 //
 // Arguments:
 //   argv[1] k               -> number of clusters
@@ -16,9 +20,32 @@
 #include <limits>
 #include <iomanip>
 #include <algorithm>
+#include <fstream>
+#include <string>
+#include <cstdio>
 
 
 static const int DIM = 2;   // dimension
+
+// Workload definitions (similar to C version)
+#define WORKLOAD_A
+#if defined(WORKLOAD_A)
+#define WORKLOAD "A"
+#define N_POINTS 10
+#define N_MEANS 2
+#elif defined(WORKLOAD_B)
+#define WORKLOAD "B"
+#define N_POINTS 1000
+#define N_MEANS 10
+#elif defined(WORKLOAD_C)
+#define WORKLOAD "C"
+#define N_POINTS 10000
+#define N_MEANS 250
+#else
+#define WORKLOAD "A"
+#define N_POINTS 10
+#define N_MEANS 2
+#endif
 
 double calculate_euclidean_distance(const double* a, const double* b) {
     double dx = a[0] - b[0];
@@ -31,6 +58,100 @@ void generate_local_points(std::vector<double>& local_points, int points_per_pro
     for (int i = 0; i < points_per_proc * DIM; ++i) {
         local_points[i] = static_cast<double>(world_rank * points_per_proc + i / DIM) + (i % DIM) * 0.1;
     }
+}
+
+void read_points_from_file(std::vector<double>& all_points, std::vector<double>& initial_centroids, 
+                          int& total_points, int& k, int world_rank) {
+    if (world_rank == 0) {
+        char file_name[64];
+        sprintf(file_name, "data.%s.txt", WORKLOAD);
+        
+        FILE* file = fopen(file_name, "r");
+        if (file == NULL) {
+            std::cerr << "Error: Could not open file " << file_name << std::endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+        
+        // Read number of points
+        if (fscanf(file, "%d", &total_points) != 1) {
+            std::cerr << "Error reading number of points" << std::endl;
+            fclose(file);
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+        
+        all_points.resize(total_points * DIM);
+        
+        // Read points (x, y coordinates, ignore cluster assignment)
+        for (int i = 0; i < total_points; i++) {
+            double x, y;
+            int cluster;
+            if (fscanf(file, "%la %la %d", &x, &y, &cluster) != 3) {
+                std::cerr << "Error reading point " << i << std::endl;
+                fclose(file);
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+            all_points[i * DIM + 0] = x;
+            all_points[i * DIM + 1] = y;
+        }
+        
+        // Read number of means
+        int temp_k;
+        if (fscanf(file, "%d", &temp_k) != 1) {
+            std::cerr << "Error reading number of means" << std::endl;
+            fclose(file);
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+        k = temp_k;
+        
+        initial_centroids.resize(k * DIM);
+        
+        // Read initial centroids
+        for (int i = 0; i < k; i++) {
+            double x, y;
+            int count;
+            if (fscanf(file, "%la %la %d", &x, &y, &count) != 3) {
+                std::cerr << "Error reading centroid " << i << std::endl;
+                fclose(file);
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+            initial_centroids[i * DIM + 0] = x;
+            initial_centroids[i * DIM + 1] = y;
+        }
+        
+        fclose(file);
+    }
+    
+    // Broadcast the data to all processes
+    MPI_Bcast(&total_points, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&k, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    
+    if (world_rank != 0) {
+        all_points.resize(total_points * DIM);
+        initial_centroids.resize(k * DIM);
+    }
+    
+    MPI_Bcast(all_points.data(), total_points * DIM, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(initial_centroids.data(), k * DIM, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+}
+
+void distribute_points(const std::vector<double>& all_points, std::vector<double>& local_points,
+                      int total_points, int world_rank, int world_size, int& points_per_proc) {
+    points_per_proc = total_points / world_size;
+    int remainder = total_points % world_size;
+    
+    // Calculate start and end indices for this process
+    int start_idx = world_rank * points_per_proc + std::min(world_rank, remainder);
+    int local_count = points_per_proc + (world_rank < remainder ? 1 : 0);
+    
+    local_points.resize(local_count * DIM);
+    
+    // Copy points for this process
+    for (int i = 0; i < local_count; i++) {
+        local_points[i * DIM + 0] = all_points[(start_idx + i) * DIM + 0];
+        local_points[i * DIM + 1] = all_points[(start_idx + i) * DIM + 1];
+    }
+    
+    points_per_proc = local_count; // Update to actual local count
 }
 
 void initialize_centroids(std::vector<double>& centroids, const std::vector<double>& local_points, 
@@ -71,6 +192,81 @@ void initialize_centroids(std::vector<double>& centroids, const std::vector<doub
     MPI_Bcast(centroids.data(), k*DIM, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 }
 
+void initialize(int argc, char** argv, int world_rank, int world_size,
+                int& k, int& points_per_proc, int& max_iter,
+                std::vector<double>& local_points, std::vector<double>& centroids) {
+    
+    // Check number of arguments
+    if (argc < 2) {
+        if (world_rank == 0) {
+            std::cerr << "Usage: " << argv[0] << " <mode> [args...]" << std::endl;
+            std::cerr << "  mode 'file' <max_iter>: Read from data file" << std::endl;
+            std::cerr << "  mode 'generate' <k> <points_per_proc> <max_iter>: Generate data" << std::endl;
+        }
+        MPI_Finalize();
+        exit(1);
+    }
+
+    std::string mode = argv[1];
+
+    if (mode == "file") {
+        if (argc < 3) {
+            if (world_rank == 0) {
+                std::cerr << "File mode requires: <max_iter>" << std::endl;
+            }
+            MPI_Finalize();
+            exit(1);
+        }
+        
+        max_iter = std::stoi(argv[2]);
+        
+        // Read data from file
+        std::vector<double> all_points;
+        std::vector<double> initial_centroids;
+        int total_points;
+        
+        read_points_from_file(all_points, initial_centroids, total_points, k, world_rank);
+        
+        // Distribute points among processes
+        distribute_points(all_points, local_points, total_points, world_rank, world_size, points_per_proc);
+        
+        // Use centroids from file
+        centroids = initial_centroids;
+        
+        if (world_rank == 0) {
+            std::cout << "Loaded " << total_points << " points and " << k << " centroids from file" << std::endl;
+            std::cout << "Points per process: " << points_per_proc << std::endl;
+        }
+        
+    } else if (mode == "generate") {
+        if (argc < 5) {
+            if (world_rank == 0) {
+                std::cerr << "Generate mode requires: <k> <points_per_proc> <max_iter>" << std::endl;
+            }
+            MPI_Finalize();
+            exit(1);
+        }
+        
+        k = std::stoi(argv[2]);
+        points_per_proc = std::stoi(argv[3]);
+        max_iter = std::stoi(argv[4]);
+        
+        // Generate fixed points for each process
+        generate_local_points(local_points, points_per_proc, world_rank);
+        
+        // Initialize Centroids
+        centroids.resize(k * DIM, 0.0);
+        initialize_centroids(centroids, local_points, k, points_per_proc, world_rank, world_size);
+        
+    } else {
+        if (world_rank == 0) {
+            std::cerr << "Unknown mode: " << mode << std::endl;
+        }
+        MPI_Finalize();
+        exit(1);
+    }
+}
+
 
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
@@ -79,27 +275,13 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    // Check number of arguments
-    if (argc < 4) {
-        if (world_rank == 0) {
-            std::cerr << "You must provide 3 arguments: <k> <points_per_proc> <max_iter>" << std::endl;
-        }
-        MPI_Finalize();
-        return 1;
-    }
-
-    int k = std::stoi(argv[1]);
-    int points_per_proc = std::stoi(argv[2]);
-    int max_iter = std::stoi(argv[3]);
-
-    // Generate fixed points for each process
+    int k, points_per_proc, max_iter;
     std::vector<double> local_points;
-    generate_local_points(local_points, points_per_proc, world_rank);
-    MPI_Barrier(MPI_COMM_WORLD);
+    std::vector<double> centroids;
 
-    // Initialize Centroids
-    std::vector<double> centroids(k * DIM, 0.0);
-    initialize_centroids(centroids, local_points, k, points_per_proc, world_rank, world_size);
+    // Initialize data and parameters
+    initialize(argc, argv, world_rank, world_size, k, points_per_proc, max_iter, local_points, centroids);
+    
     MPI_Barrier(MPI_COMM_WORLD);
 
     // Local variables for each process
