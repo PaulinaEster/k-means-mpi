@@ -133,7 +133,7 @@ void calculate_means(int my_rank, int nprocs, double* x_, double* y_, int* count
 
     MPI_Allreduce(x_, means->x, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(y_, means->y, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(count_, means->count, N_MEANS, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(count_, means->count, N_MEANS, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
     for(int i = 0; i < N_MEANS; i++){
         if(means->count[i] > 0){
