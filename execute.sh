@@ -18,6 +18,8 @@ echo "Executando data_generator"
 ./data_generator.H.exe
 
 echo "Obtendo resultados"
+echo "NUMERO PROCESSOS: 1 WORKLOAD: D " >> $TEMPFILE
+{ time mpirun -np 1 --oversubscribe ./k_means.D.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 8 WORKLOAD: D " >> $TEMPFILE
 { time mpirun -np 8 --oversubscribe ./k_means.D.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 16 WORKLOAD: D " >> $TEMPFILE
@@ -32,6 +34,8 @@ echo "NUMERO PROCESSOS: 96 WORKLOAD: D " >> $TEMPFILE
 { time mpirun -np 96 --oversubscribe ./k_means.D.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 
 
+echo "NUMERO PROCESSOS: 1 WORKLOAD: E " >> $TEMPFILE
+{ time mpirun -np 1 --oversubscribe ./k_means.E.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 8 WORKLOAD: E " >> $TEMPFILE
 { time mpirun -np 8 --oversubscribe ./k_means.E.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 16 WORKLOAD: E " >> $TEMPFILE
@@ -46,6 +50,8 @@ echo "NUMERO PROCESSOS: 96 WORKLOAD: E " >> $TEMPFILE
 { time mpirun -np 96 --oversubscribe ./k_means.E.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 
 
+echo "NUMERO PROCESSOS: 1 WORKLOAD: F " >> $TEMPFILE
+{ time mpirun -np 1 --oversubscribe ./k_means.F.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 8 WORKLOAD: F " >> $TEMPFILE
 { time mpirun -np 8 --oversubscribe ./k_means.F.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 16 WORKLOAD: F " >> $TEMPFILE
@@ -60,6 +66,8 @@ echo "NUMERO PROCESSOS: 96 WORKLOAD: F " >> $TEMPFILE
 { time mpirun -np 96 --oversubscribe ./k_means.F.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 
 
+echo "NUMERO PROCESSOS: 1 WORKLOAD: G " >> $TEMPFILE
+{ time mpirun -np 1 --oversubscribe ./k_means.G.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 8 WORKLOAD: G " >> $TEMPFILE
 { time mpirun -np 8 --oversubscribe ./k_means.G.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 16 WORKLOAD: G " >> $TEMPFILE
@@ -73,6 +81,8 @@ echo "NUMERO PROCESSOS: 72 WORKLOAD: G " >> $TEMPFILE
 echo "NUMERO PROCESSOS: 96 WORKLOAD: G " >> $TEMPFILE
 { time mpirun -np 96 --oversubscribe ./k_means.G.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 
+echo "NUMERO PROCESSOS: 1 WORKLOAD: H " >> $TEMPFILE
+{ time mpirun -np 1 --oversubscribe ./k_means.H.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 8 WORKLOAD: H " >> $TEMPFILE
 { time mpirun -np 8 --oversubscribe ./k_means.H.exe file 200; } >> $RESULTFILE 2>> $TEMPFILE
 echo "NUMERO PROCESSOS: 16 WORKLOAD: H " >> $TEMPFILE
