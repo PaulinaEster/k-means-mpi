@@ -28,23 +28,53 @@
 static const int DIM = 2;   // dimension
 
 // Workload definitions (similar to C version)
-#define WORKLOAD_A
+
 #if defined(WORKLOAD_A)
 #define WORKLOAD "A"
 #define N_POINTS 10
 #define N_MEANS 2
+#define INTERVAL 25
 #elif defined(WORKLOAD_B)
 #define WORKLOAD "B"
 #define N_POINTS 1000
 #define N_MEANS 10
+#define INTERVAL 50
 #elif defined(WORKLOAD_C)
 #define WORKLOAD "C"
 #define N_POINTS 10000
 #define N_MEANS 250
+#define INTERVAL 100
+#elif defined(WORKLOAD_D)
+#define WORKLOAD "D"
+#define N_POINTS 100000
+#define N_MEANS 1000
+#define INTERVAL 200
+#elif defined(WORKLOAD_E)
+#define WORKLOAD "E"
+#define N_POINTS 250000
+#define N_MEANS 2500
+#define INTERVAL 1000
+#elif defined(WORKLOAD_F)
+#define WORKLOAD "F"
+#define N_POINTS 500000
+#define N_MEANS 5000
+#define INTERVAL 5000
+#elif defined(WORKLOAD_G)
+#define WORKLOAD "G"
+#define N_POINTS 1000000
+#define N_MEANS 10000
+#define INTERVAL 25000
+#elif defined(WORKLOAD_H)
+#define WORKLOAD "H"
+#define N_POINTS 5000000
+#define N_MEANS 50000
+#define INTERVAL 50000
 #else
+#define WORKLOAD_A
 #define WORKLOAD "A"
 #define N_POINTS 10
 #define N_MEANS 2
+#define INTERVAL 25
 #endif
 
 double calculate_euclidean_distance(const double* a, const double* b) {

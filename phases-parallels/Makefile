@@ -26,7 +26,7 @@ data_generator:
 	$(CCOMPILER) data_generator.c $(CFLAGS) -DWORKLOAD_$(WORKLOAD) -o data_generator.$(WORKLOAD).exe
 
 k_means:
-	$(CCOMPILER) k_means.c $(CFLAGS) -DWORKLOAD_$(WORKLOAD) -D$(DEBUG_FLAG) -D$(TIMER_FLAG) -o k_means.$(WORKLOAD).exe
+	$(CCOMPILER) k_means.cpp $(CFLAGS) -DWORKLOAD_$(WORKLOAD) -D$(DEBUG_FLAG) -D$(TIMER_FLAG) -o k_means.$(WORKLOAD).exe
 
 clean:
 	- rm -f *.o *~ data_generator.*.exe k_means.*.exe
