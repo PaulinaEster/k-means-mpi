@@ -1,0 +1,1 @@
+WORKLOAD: G NODES: 8Erro na execução do mpirun -np 8 'G'. Abortando.
