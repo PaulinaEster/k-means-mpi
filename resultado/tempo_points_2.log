@@ -1,1 +1,6 @@
-WORKLOAD: G NODES: 8Erro na execução do mpirun -np 8 'G'. Abortando.
+WORKLOAD: G NODES: 8 	 TEMPO: 427.089175 Correctness verification  =     SUCCESSFUL 
+WORKLOAD: G NODES: 16 	 TEMPO: 214.763752 Correctness verification  =     SUCCESSFUL 
+WORKLOAD: G NODES: 32 	 TEMPO: 112.333277 Correctness verification  =     SUCCESSFUL 
+WORKLOAD: G NODES: 64 	 TEMPO: 118.389792 Correctness verification  =     SUCCESSFUL 
+WORKLOAD: G NODES: 96 	 TEMPO: 79.837594 Correctness verification  =     SUCCESSFUL 
+WORKLOAD: G NODES: 1Erro na execução do mpirun -np 1 'G'. Abortando.
